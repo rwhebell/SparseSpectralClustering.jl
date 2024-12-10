@@ -23,7 +23,7 @@ function spectralcluster(S, k)
     L = makeNormalizedLaplacian(S, d)
 
     # this is the sparse, approximate eigenpair finder from Arpack
-    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=10_000, tol=1e-4)
+    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=10_000, tol=1e-8)
 
     v = real.(v)
 
