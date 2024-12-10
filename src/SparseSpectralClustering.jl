@@ -21,9 +21,12 @@ function spectralcluster(S, k)
 
     d = getDegree(S)
     L = makeNormalizedLaplacian(S, d)
+    L = sparse(L)
+    L = fkeep!((i,j,x) -> abs(x)>(1e-16), L)
+    L = Symmetric(L)
 
     # this is the sparse, approximate eigenpair finder from Arpack
-    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=10_000, tol=1e-8)
+    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=100_000, tol=1e-8)
 
     v = real.(v)
 
@@ -32,7 +35,7 @@ function spectralcluster(S, k)
     # transpose to pass to clustering with rows as points
     v = transpose(v)
 
-    clustering = kmeans(v, k)
+    clustering = kmeans(v, k, display=:iter)
 
     return assignments(clustering)
 
@@ -61,10 +64,13 @@ function knnSimilarity(X, m, σ)
         for (j, d) in zip(J, dists)
             push!(Si, i)
             push!(Sj, j)
-            push!(Sv, exp(-d^2/σ^2))
+            push!(Sv, exp(-d^2/σ^2)/2)
+            push!(Si, j)
+            push!(Sj, i)
+            push!(Sv, exp(-d^2/σ^2)/2)
         end
     end
-    return SparseArrays.sparse!(Si, Sj, Sv, n, n, max)
+    return SparseArrays.sparse!(Si, Sj, Sv, n, n, +)
 end
 
 end
