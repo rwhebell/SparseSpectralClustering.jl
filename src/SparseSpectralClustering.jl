@@ -13,7 +13,9 @@ kmeans is used on the eigenvectors of the normalized Laplacian
 
 - `idxs` is a vector of `Int`s that give cluster numbers for each point
 """
-function spectralcluster(S, k)
+function spectralcluster(S::AbstractMatrix{T}, k) where T<:Real
+
+    ϵ = eps(T)
 
     @assert size(S,1) == size(S,2) "S should be square."
 
@@ -22,11 +24,11 @@ function spectralcluster(S, k)
     d = getDegree(S)
     L = makeNormalizedLaplacian(S, d)
     L = sparse(L)
-    L = fkeep!((i,j,x) -> abs(x)>(1e-16), L)
+    L = fkeep!((i,j,x) -> abs(x)>(ϵ), L)
     L = Symmetric(L)
 
     # this is the sparse, approximate eigenpair finder from Arpack
-    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=100_000, tol=1e-8)
+    λ, v, _ = eigs(L; nev=k, ritzvec=true, which=:SM, maxiter=100_000, tol=√(ϵ))
 
     v = real.(v)
 
