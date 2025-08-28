@@ -107,7 +107,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         end
 
         if n == 2
-            split = [true false]
+            split = [true, false]
         else
             split = splitCluster(S, mask)
         end
