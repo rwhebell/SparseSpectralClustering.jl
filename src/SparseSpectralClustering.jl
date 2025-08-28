@@ -1,8 +1,9 @@
 module SparseSpectralClustering
 
-using LinearAlgebra, Arpack, Clustering, SparseArrays, Distances, NearestNeighbors
+using LinearAlgebra, Arpack, Clustering, SparseArrays, 
+    Distances, NearestNeighbors, CuthillMcKee
 
-export spectralcluster, knnSimilarity
+export spectralcluster, knnSimilarity, iterativeBipartition
 
 """ 
 idxs = spectralcluster(S, k; method=:kmedoids)
@@ -43,6 +44,126 @@ function spectralcluster(S::AbstractMatrix{T}, k) where T<:Real
 
 end
 
+function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
+    L, _ = makeLaplacian(S, :symmetric)
+    Lp = rcmpermute(L)
+    p = symrcm(L, true, false)
+    ip = symrcm(L, true, true)
+    @inbounds @fastmath λ, v, _ = eigs(
+        Lp; 
+        nev = maxClusters, 
+        ritzvec = true, 
+        which = :SM, 
+        maxiter = 10*size(L,1), 
+        tol = eigvalTol
+    )
+    λ = abs.(λ)
+    v = abs.(v)
+    numClusters = count(<(eigvalTol), λ)
+    if numClusters == maxClusters
+        @warn "There may be more highly disconnected clusters (numClusters == maxClusters)"
+    end
+    v = transpose(v[ip, 1:numClusters]) # inverse permutes and truncates list of eigenvecs
+    v ./= norm.(eachcol(v))'
+    idxs = assignments(kmeans(v, numClusters, display=:iter))
+    return idxs
+end
+
+function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarityFunc, stopFunc::Function; neighbourLists=nothing) where {FEATURE_TYPE}
+
+    # similarityFunc : (FEATURE_TYPE, FEATURE_TYPE) -> Real
+    # stopFunc : Vec{FEATURE_TYPE} -> Bool
+
+    N = length(features)
+
+    S = makeSimilarityMatrix(features, similarityFunc, neighbourLists)
+    @info "Similarity matrix density=$(nnz(S)/length(S))"
+    
+    @info "Checking for very disconnected clusters..."
+    idxs = clusterDisconnected(S .> 0, maxClusters=10)
+    # idxs = ones(Int, N)
+    queue = unique(idxs)
+    lastClusterIdx = maximum(idxs)
+    @info "Found $lastClusterIdx very disconnected clusters."
+
+    for i in 1:lastClusterIdx
+        if count(==(i), idxs) > 1 && !stopFunc(@view(features[idxs .== i]))
+            push!(queue, i)
+        end
+    end
+
+    mask = BitVector(undef, length(features))
+
+    while !isempty(queue)
+
+        i = pop!(queue)
+        mask .= idxs .== i
+        n = count(mask)
+        @info "Cluster $i: length=$n."
+
+        if n == 1 || stopFunc(@view(features[mask]))
+            @info "Done with cluster $i."
+            continue
+        end
+
+        if n == 2
+            split = [true false]
+        else
+            split = splitCluster(S, mask)
+        end
+
+        if all(split) || !any(split)
+            # could not split the cluster based on the Fiedler vector
+            # push nothing to the queue
+            @info "Split failed."
+            continue
+        end
+
+        lastClusterIdx += 1
+        in_cluster = findall(mask)
+        idxs[in_cluster[split]] .= lastClusterIdx
+        
+        @info "Split complete: lengths $(count(split)), $(count(.!split))."
+        
+        push!(queue, i)
+        push!(queue, lastClusterIdx)
+
+    end
+
+    return idxs
+
+end
+
+function splitCluster(S::AbstractArray{T}, mask) where T<:Real
+
+    S_i = S[mask, mask]
+
+    normalize = :none
+    L, B = makeLaplacian(S_i, normalize)
+
+    v_f = getFiedlerVec(L, B)
+    
+    return real.(v_f) .≥ 0
+
+end
+
+function getFiedlerVec(Laplacian, B=I)
+    @fastmath λ, v, _ = eigs(
+        Laplacian, B; 
+        nev=3, 
+        ritzvec=true, 
+        which=:SM, 
+        maxiter=10*size(Laplacian,1), 
+        tol=1e-10
+    )
+    λ = real.(λ)
+    v = real.(v)
+    if λ[2] < 1e-10
+        @warn "The Fiedler eigenvalue is very small."
+    end
+    return v[:,2]
+end
+
 function getDegree(S)
     n = size(S, 1)
     return S * ones(eltype(S), n)
@@ -53,6 +174,20 @@ function makeNormalizedLaplacian(S, d)
     inv_sqrt_D = sparse(Diagonal(d .^(-1/2)))
     return (I - inv_sqrt_D * S * inv_sqrt_D)
     # equivalent to inv_sqrt_D * (D - S) * inv_sqrt_D
+end
+
+function makeLaplacian(S, normalize=:none)
+    d = getDegree(S)
+    if normalize === :randomwalk
+        D = spdiagm(d)
+        return D - S, D
+    elseif normalize === :symmetric
+        inv_sqrt_D = spdiagm(1 ./ sqrt.(d))
+        @fastmath return (I - inv_sqrt_D * S * inv_sqrt_D), I
+    else
+        D = spdiagm(d)
+        return D - S, I
+    end
 end
 
 function knnSimilarity(X, m, σ)
@@ -73,6 +208,51 @@ function knnSimilarity(X, m, σ)
         end
     end
     return SparseArrays.sparse!(Si, Sj, Sv, n, n, +)
+end
+
+function makeSimilarityMatrix(features, distFunc, neighbourLists)
+
+    n = length(features)
+    Si = Int[]
+    Sj = Int[]
+    Sv = Float64[]
+    for i in 1:n
+        for j in neighbourLists[i]
+            i == j && continue
+            dist = distFunc(features[i], features[j])
+            push!(Si, i)
+            push!(Sj, j)
+            push!(Sv, dist)
+            push!(Si, j)
+            push!(Sj, i)
+            push!(Sv, dist)
+        end
+    end
+    S = SparseArrays.sparse!(Si, Sj, Sv, n, n, max)
+    return S
+
+end
+
+function makeSimilarityMatrix(features, distFunc, ::Nothing)
+
+    n = length(features)
+    Si = Int[]
+    Sj = Int[]
+    Sv = Float64[]
+    for i in 1:n
+        for j in i:n
+            i == j && continue
+            dist = distFunc(features[i], features[j])
+            push!(Si, i)
+            push!(Sj, j)
+            push!(Sv, dist)
+            push!(Si, j)
+            push!(Sj, i)
+            push!(Sv, dist)
+        end
+    end
+    return SparseArrays.sparse!(Si, Sj, Sv, n, n, max)
+
 end
 
 end
