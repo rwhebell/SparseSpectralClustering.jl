@@ -1,7 +1,7 @@
 module SparseSpectralClustering
 
 using LinearAlgebra, Arpack, Clustering, SparseArrays, 
-    Distances, NearestNeighbors, CuthillMcKee
+    Distances, NearestNeighbors
 
 export spectralcluster, knnSimilarity, iterativeBipartition
 
@@ -46,11 +46,8 @@ end
 
 function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
     L, _ = makeLaplacian(S, :symmetric)
-    Lp = rcmpermute(L)
-    p = symrcm(L, true, false)
-    ip = symrcm(L, true, true)
     @inbounds @fastmath λ, v, _ = eigs(
-        Lp; 
+        L; 
         nev = maxClusters, 
         ritzvec = true, 
         which = :SM, 
@@ -63,7 +60,7 @@ function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
     if numClusters == maxClusters
         @warn "There may be more highly disconnected clusters (numClusters == maxClusters)"
     end
-    v = transpose(v[ip, 1:numClusters]) # inverse permutes and truncates list of eigenvecs
+    v = transpose(v[:, 1:numClusters])
     v ./= norm.(eachcol(v))'
     idxs = assignments(kmeans(v, numClusters, display=:iter))
     return idxs
