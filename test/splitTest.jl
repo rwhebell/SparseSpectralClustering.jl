@@ -19,7 +19,7 @@ function test(n)
     σ = median.(nearestNbrDists)
     features = zip(X, σ) |> collect
     similarityFunc(a,b) = exp( -norm(a[1]-b[1])^2 / (a[2]*b[2]) )
-    stopFunc(F) = length(F)<(1.1n)
+    stopFunc(mask) = count(mask) < 1.1n
     idxs = iterativeBipartition(features, similarityFunc, stopFunc; 
         neighbourLists=nbrs)
 end

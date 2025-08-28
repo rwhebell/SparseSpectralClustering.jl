@@ -67,10 +67,10 @@ function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
 end
 
 function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarityFunc, stopFunc::Function; 
-    neighbourLists=nothing, plotFunc=_->nothing) where {FEATURE_TYPE}
+    neighbourLists=nothing, plotFunc=(idxs,iter)->nothing) where {FEATURE_TYPE}
 
     # similarityFunc : (FEATURE_TYPE, FEATURE_TYPE) -> Real
-    # stopFunc : Vec{FEATURE_TYPE} -> Bool
+    # stopFunc : Vec{Bool} -> Bool
 
     N = length(features)
 
@@ -84,7 +84,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
     @info "Found $lastClusterIdx very disconnected clusters."
 
     for i in 1:lastClusterIdx
-        if count(==(i), idxs) > 1 && !stopFunc(@view(features[idxs .== i]))
+        if count(==(i), idxs) > 1 && !stopFunc(idxs .== i)
             push!(queue, i)
         end
     end
@@ -101,7 +101,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         n = count(mask)
         @info "Cluster $i: length=$n."
 
-        if n == 1 || stopFunc(@view(features[mask]))
+        if n == 1 || stopFunc(mask)
             @info "Done with cluster $i."
             continue
         end
