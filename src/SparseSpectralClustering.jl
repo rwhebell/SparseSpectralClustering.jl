@@ -151,13 +151,13 @@ function splitCluster(S::AbstractArray{T}, mask) where T<:Real
 end
 
 function getFiedlerVec(Laplacian, B=I)
-    @fastmath λ, v, _ = eigs(
+    λ, v, _ = eigs(
         Laplacian, B; 
-        nev=3, 
+        nev=2, 
         ritzvec=true, 
         which=:SM, 
         maxiter=10*size(Laplacian,1), 
-        tol=1e-10
+        tol=1e-5
     )
     λ = real.(λ)
     v = real.(v)
