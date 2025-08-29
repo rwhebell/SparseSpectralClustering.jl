@@ -62,7 +62,7 @@ function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
     end
     v = transpose(v[:, 1:numClusters])
     v ./= norm.(eachcol(v))'
-    idxs = assignments(kmeans(v, numClusters, display=:iter))
+    idxs = assignments(kmeans(v, numClusters))
     return idxs
 end
 
