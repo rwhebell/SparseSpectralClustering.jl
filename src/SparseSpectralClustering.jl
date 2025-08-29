@@ -1,7 +1,7 @@
 module SparseSpectralClustering
 
 using LinearAlgebra, Arpack, Clustering, SparseArrays, 
-    Distances, NearestNeighbors
+    Distances, NearestNeighbors, ProgressBars
 
 export spectralcluster, knnSimilarity, iterativeBipartition
 
@@ -73,6 +73,9 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
     # stopFunc : Vec{Bool} -> Bool
 
     N = length(features)
+    numDone = 0
+    prog = ProgressBar(total=N)
+    ProgressBars.update(prog, 0)
 
     S = makeSimilarityMatrix(features, similarityFunc, neighbourLists)
     @debug "Similarity matrix density=$(nnz(S)/length(S))"
@@ -103,6 +106,8 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
 
         if n == 1 || stopFunc(mask)
             @debug "\tCluster $i is final."
+            numDone += count(mask)
+            ProgressBars.update(prog, numDone)
             continue
         end
 
@@ -115,7 +120,9 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         if all(split) || !any(split)
             # could not split the cluster based on the Fiedler vector
             # push nothing to the queue
-            @debug "\tSplit failed."
+            @warn "\tBipartition failed on cluster $i."
+            numDone += count(mask)
+            ProgressBars.update(prog, numDone)
             continue
         end
 
@@ -133,6 +140,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
 
     end
 
+    ProgressBars.update(prog, N)
     return idxs
 
 end
