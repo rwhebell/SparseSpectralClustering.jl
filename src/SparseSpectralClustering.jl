@@ -144,18 +144,17 @@ function splitCluster(S::AbstractArray{T}, mask, maxiter, normalize) where T<:Re
 
     L, B = makeLaplacian(S_i, normalize)
 
-    v_f = getFiedlerVec(L, B, maxiter)
+    if size(S_i,1) == 3
+        v_f = getFiedlerVecExact(L, B)
+    else
+        v_f = getFiedlerVec(L, B, maxiter)
+    end
     
     return real.(v_f) .≥ 0
 
 end
 
 function getFiedlerVec(Laplacian, B, maxiter)
-    if size(Laplacian,1)==3
-        L = Symmetric(Laplacian) # makes sure we get 2 eigpairs
-    else
-        L = Laplacian # faster
-    end
     λ, v, _ = eigs(
         Laplacian, B; 
         nev=2, 
@@ -170,6 +169,17 @@ function getFiedlerVec(Laplacian, B, maxiter)
         @warn "The Fiedler eigenvalue is very small (this usually indicates a similarity network with more than one component)"
     end
     return v[:,2]
+end
+
+function getFiedlerVecExact(Laplacian, B)
+    λ, v = eigen(Symmetric(Laplacian), B)
+    λ = real.(λ)
+    v = real.(v)
+    p = sortperm(λ, by=abs)
+    if λ[p[2]] < 1e-14
+        @warn "The Fiedler eigenvalue is very small (this usually indicates a similarity network with more than one component)"
+    end
+    return v[:,p[2]]
 end
 
 function getDegree(S)
