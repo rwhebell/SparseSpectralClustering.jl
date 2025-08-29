@@ -68,7 +68,7 @@ end
 
 function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarityFunc, stopFunc::Function; 
     neighbourLists=nothing, plotFunc=(idxs,iter)->nothing, 
-    maxFiedlerIters=100*size(Laplacian,1), normalize=:none) where {FEATURE_TYPE}
+    maxFiedlerIters=100*length(features), normalize=:none) where {FEATURE_TYPE}
 
     # similarityFunc : (FEATURE_TYPE, FEATURE_TYPE) -> Real
     # stopFunc : Vec{Bool} -> Bool
