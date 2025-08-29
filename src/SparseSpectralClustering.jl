@@ -75,13 +75,13 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
     N = length(features)
 
     S = makeSimilarityMatrix(features, similarityFunc, neighbourLists)
-    @info "Similarity matrix density=$(nnz(S)/length(S))"
+    @debug "Similarity matrix density=$(nnz(S)/length(S))"
     
-    @info "Checking for very disconnected clusters..."
+    @debug "Checking for very disconnected clusters..."
     idxs = clusterDisconnected(S .> 0, maxClusters=10)
     queue = unique(idxs)
     lastClusterIdx = maximum(idxs)
-    @info "Found $lastClusterIdx very disconnected clusters."
+    @debug "Found $lastClusterIdx very disconnected clusters."
 
     for i in 1:lastClusterIdx
         if count(==(i), idxs) > 1 && !stopFunc(idxs .== i)
@@ -99,10 +99,10 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         i = pop!(queue)
         mask .= idxs .== i
         n = count(mask)
-        @info "Cluster $i: length=$n."
+        @debug "Cluster $i: length=$n."
 
         if n == 1 || stopFunc(mask)
-            @info "Done with cluster $i."
+            @debug "\tCluster $i is final."
             continue
         end
 
@@ -115,7 +115,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         if all(split) || !any(split)
             # could not split the cluster based on the Fiedler vector
             # push nothing to the queue
-            @info "Split failed."
+            @debug "\tSplit failed."
             continue
         end
 
@@ -123,7 +123,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         in_cluster = findall(mask)
         idxs[in_cluster[split]] .= lastClusterIdx
         
-        @info "Split complete: lengths $(count(split)), $(count(.!split))."
+        @debug "\tSplit complete: lengths $(count(split)), $(count(.!split))."
         
         push!(queue, i)
         push!(queue, lastClusterIdx)
@@ -162,7 +162,7 @@ function getFiedlerVec(Laplacian, B=I)
     λ = real.(λ)
     v = real.(v)
     if λ[2] < 1e-10
-        @warn "The Fiedler eigenvalue is very small."
+        @warn "The Fiedler eigenvalue is very small (this usually indicates a similarity network with more than one component)"
     end
     return v[:,2]
 end
