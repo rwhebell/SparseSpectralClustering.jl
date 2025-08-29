@@ -21,5 +21,5 @@ function test(n)
     similarityFunc(a,b) = exp( -norm(a[1]-b[1])^2 / (a[2]*b[2]) )
     stopFunc(mask) = count(mask) < 1.1n
     idxs = iterativeBipartition(features, similarityFunc, stopFunc; 
-        neighbourLists=nbrs)
+        neighbourLists=nbrs, maxFiedlerIters=100*length(features), normalize=:symmetric)
 end

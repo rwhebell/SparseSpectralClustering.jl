@@ -44,14 +44,14 @@ function spectralcluster(S::AbstractMatrix{T}, k) where T<:Real
 
 end
 
-function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
+function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8, maxiter=100*size(S,1))
     L, _ = makeLaplacian(S, :symmetric)
     @inbounds @fastmath λ, v, _ = eigs(
         L; 
         nev = maxClusters, 
         ritzvec = true, 
         which = :SM, 
-        maxiter = 10*size(L,1), 
+        maxiter = maxiter, 
         tol = eigvalTol
     )
     λ = abs.(λ)
@@ -67,7 +67,8 @@ function clusterDisconnected(S; maxClusters=10, eigvalTol=1e-8)
 end
 
 function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarityFunc, stopFunc::Function; 
-    neighbourLists=nothing, plotFunc=(idxs,iter)->nothing) where {FEATURE_TYPE}
+    neighbourLists=nothing, plotFunc=(idxs,iter)->nothing, 
+    maxFiedlerIters=100*size(Laplacian,1), normalize=:none) where {FEATURE_TYPE}
 
     # similarityFunc : (FEATURE_TYPE, FEATURE_TYPE) -> Real
     # stopFunc : Vec{Bool} -> Bool
@@ -109,7 +110,7 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
         if n == 2
             split = [true, false]
         else
-            split = splitCluster(S, mask)
+            split = splitCluster(S, mask, maxFiedlerIters, normalize)
         end
 
         if all(split) || !any(split)
@@ -137,31 +138,30 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
 
 end
 
-function splitCluster(S::AbstractArray{T}, mask) where T<:Real
+function splitCluster(S::AbstractArray{T}, mask, maxiter, normalize) where T<:Real
 
     S_i = S[mask, mask]
 
-    normalize = :none
     L, B = makeLaplacian(S_i, normalize)
 
-    v_f = getFiedlerVec(L, B)
+    v_f = getFiedlerVec(L, B, maxiter)
     
     return real.(v_f) .≥ 0
 
 end
 
-function getFiedlerVec(Laplacian, B=I)
+function getFiedlerVec(Laplacian, B, maxiter)
     λ, v, _ = eigs(
         Laplacian, B; 
         nev=2, 
         ritzvec=true, 
         which=:SM, 
-        maxiter=10*size(Laplacian,1), 
-        tol=1e-5
+        maxiter, 
+        tol=1e-8
     )
     λ = real.(λ)
     v = real.(v)
-    if λ[2] < 1e-10
+    if λ[2] < 1e-14
         @warn "The Fiedler eigenvalue is very small (this usually indicates a similarity network with more than one component)"
     end
     return v[:,2]
