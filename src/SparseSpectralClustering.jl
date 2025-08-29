@@ -151,6 +151,11 @@ function splitCluster(S::AbstractArray{T}, mask, maxiter, normalize) where T<:Re
 end
 
 function getFiedlerVec(Laplacian, B, maxiter)
+    if size(Laplacian,1)==3
+        L = Symmetric(Laplacian) # makes sure we get 2 eigpairs
+    else
+        L = Laplacian # faster
+    end
     λ, v, _ = eigs(
         Laplacian, B; 
         nev=2, 
