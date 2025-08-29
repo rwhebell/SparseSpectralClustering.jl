@@ -172,7 +172,7 @@ function getFiedlerVec(Laplacian, B, maxiter)
 end
 
 function getFiedlerVecExact(Laplacian, B)
-    λ, v = eigen(Symmetric(Laplacian), B)
+    λ, v = eigen(Laplacian, Matrix(B))
     λ = real.(λ)
     v = real.(v)
     p = sortperm(λ, by=abs)
