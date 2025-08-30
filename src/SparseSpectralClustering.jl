@@ -138,13 +138,13 @@ function iterativeBipartition(features::AbstractVector{FEATURE_TYPE}, similarity
 
 end
 
-function splitCluster(S::AbstractArray{T}, mask, maxiter, normalize) where T<:Real
+function splitCluster(S, mask, maxiter, normalize)
 
     S_i = S[mask, mask]
 
     L, B = makeLaplacian(S_i, normalize)
 
-    if size(S_i,1) == 3
+    if size(S_i,1) < 6
         v_f = getFiedlerVecExact(L, B)
     else
         v_f = getFiedlerVec(L, B, maxiter)
@@ -171,8 +171,19 @@ function getFiedlerVec(Laplacian, B, maxiter)
     return v[:,2]
 end
 
-function getFiedlerVecExact(Laplacian, B)
-    λ, v = eigen(Matrix(Laplacian), Matrix(B, size(Laplacian)))
+function getFiedlerVecExact(Laplacian::AbstractMatrix, ::UniformScaling)
+    λ, v = eigen(Symmetric(Matrix(Laplacian)))
+    λ = real.(λ)
+    v = real.(v)
+    p = sortperm(λ, by=abs)
+    if λ[p[2]] < 1e-14
+        @warn "The Fiedler eigenvalue is very small (this usually indicates a similarity network with more than one component)"
+    end
+    return v[:,p[2]]
+end
+
+function getFiedlerVecExact(Laplacian::AbstractMatrix, D::Diagonal)
+    λ, v = eigen(Symmetric(Matrix(Laplacian)), D)
     λ = real.(λ)
     v = real.(v)
     p = sortperm(λ, by=abs)
@@ -197,13 +208,13 @@ end
 function makeLaplacian(S, normalize=:none)
     d = getDegree(S)
     if normalize === :randomwalk
-        D = spdiagm(d)
+        D = Diagonal(d)
         return D - S, D
     elseif normalize === :symmetric
-        inv_sqrt_D = spdiagm(1 ./ sqrt.(d))
+        inv_sqrt_D = Diagonal(1 ./ sqrt.(d))
         @fastmath return (I - inv_sqrt_D * S * inv_sqrt_D), I
     else
-        D = spdiagm(d)
+        D = Diagonal(d)
         return D - S, I
     end
 end
