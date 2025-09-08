@@ -7,7 +7,7 @@ using LinearAlgebra, Arpack, Clustering,
 using AndExport
 
 include("./common.jl")
-include("./oneshot.jl")
+include("./oneShot.jl")
 include("./disconnected.jl")
 include("./iterative.jl")
 
