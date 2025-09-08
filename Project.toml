@@ -4,22 +4,28 @@ authors = ["Riley Whebell <75467572+rwhebell@users.noreply.github.com> and contr
 version = "1.0.0-DEV"
 
 [deps]
+AndExport = "4484d908-372d-4f90-b90b-0ec97f005b8c"
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+ProgressBars = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SparseArraysCOO = "610335e3-e389-450b-99eb-3a0a1c8c6bf9"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
+AndExport = "1.0.1"
 Arpack = "0.5.4"
 Clustering = "0.15.7"
 Distances = "0.10.12"
 LinearAlgebra = "1.11.0"
 NearestNeighbors = "0.4.21"
+ProgressBars = "1.5.1"
 SparseArrays = "1.11.0"
+SparseArraysCOO = "1.2.0"
 StaticArrays = "1.9.14"
 StatsBase = "0.34.6"
 julia = "1.11"
