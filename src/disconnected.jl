@@ -4,12 +4,12 @@ function clusterDisconnected(S::AbstractMatrix{T}; minClusters=1, maxClusters=10
     N = size(S,1)
     I_minus_L = make_I_minus_L(S)
 
-    if N < 4
+    if N ≤ 6
         λ, v = eigen(Symmetric(Matrix(I_minus_L)))
     else
         λ, v, _ = eigs(
             I_minus_L;
-            nev = maxClusters,
+            nev = min(maxClusters, N-1),
             ritzvec = true,
             which = :LR,
             tol,
