@@ -1,7 +1,5 @@
 # SparseSpectralClustering.jl
 
-[![Build Status](https://github.com/rwhebell/SparseSpectralClustering.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/rwhebell/SparseSpectralClustering.jl/actions/workflows/CI.yml?query=branch%3Amaster)
-
 Uses kmeans clustering on approximated eigenvectors for the k smallest eigenvalues of the normalized graph laplacian of the similarity matrix.
 
 Usage, where `X` is an m by n matrix of n points in m-d space:
