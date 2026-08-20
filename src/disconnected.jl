@@ -29,9 +29,10 @@ function clusterDisconnected(S::AbstractMatrix{T}; minClusters=1, maxClusters=10
         return ones(Int, size(S,1))
     end
 
-    v = transpose(real.(v[:, p[1:numClusters]]))
-    v ./= norm.(eachcol(v))'
-    idxs = assignments(kmeans(v, numClusters))
+    v = real.(v[:, p[1:numClusters]])
+    v ./= norm.(eachrow(v))
+
+    idxs = ClusterAnalysis.kmeans(v, numClusters; nstart=10, maxiter=20).cluster
 
     return idxs
 

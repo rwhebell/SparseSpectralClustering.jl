@@ -1,6 +1,6 @@
 module SparseSpectralClustering
 
-using LinearAlgebra, Arpack, Clustering,
+using LinearAlgebra, Arpack, ClusterAnalysis,
     SparseArrays, SparseArraysCOO, Distances,
     NearestNeighbors
 
